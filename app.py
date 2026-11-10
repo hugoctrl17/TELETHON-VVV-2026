@@ -249,7 +249,7 @@ HERO = f"""
 <div class="hero">
   <div class="logo"><img src="data:image/png;base64,{asso}" alt="Les Vieux Volants du Vimeu"></div>
   <div class="titre"><h1>1 € = 1 KILOMÈTRE</h1>
-    <p>Le grand voyage solidaire du Téléthon — Les Vieux Volants du Vimeu</p></div>
+    <p>Téléthon — Les Vieux Volants du Vimeu</p></div>
   <div class="logo"><img src="data:image/png;base64,{tele}" alt="AFM-Téléthon"></div>
 </div>"""
 
@@ -264,21 +264,21 @@ def admin_panel():
         return
     st.write("**Montant du don (1 € = 1 km)**")
     cols = st.columns(5)
-    for col, v in zip(cols, (5, 10, 20, 50, 100)):
+    for col, v in zip(cols, (2, 5, 10, 20, 50)):
         if col.button(f"+{v}", key=f"q{v}", use_container_width=True):
             add_donation(v, "")
-            st.toast(f"+{v} km — total : {fmt(total_km())} km 🚐")
+            st.toast(f"+{v} km — total : {fmt(total_km())} km")
     with st.form("don", clear_on_submit=True):
         km = st.number_input("Autre montant (€)", min_value=1, max_value=100000, value=10)
-        note = st.text_input("Note facultative", placeholder="Ex. : boîte à dons, nom du donateur…")
+        note = st.text_input("MODE - Nom - Prénom", placeholder="Ex. : ESP DUPONT Jean")
         if st.form_submit_button("✔ Valider le don", use_container_width=True):
             add_donation(km, note)
-            st.toast(f"+{km} km — total : {fmt(total_km())} km 🚐")
+            st.toast(f"+{km} km — total : {fmt(total_km())} km ")
     st.divider()
     if st.button("↩ Annuler le dernier don", use_container_width=True):
         undo_last()
         st.toast("Dernier don annulé")
-    st.download_button("💾 Sauvegarder la liste (Excel/CSV)", export_csv(),
+    st.download_button("Sauvegarder la liste (Excel/CSV)", export_csv(),
                        "dons_telethon.csv", "text/csv", use_container_width=True)
     with st.expander("Zone dangereuse : tout remettre à zéro"):
         if st.checkbox("Je veux effacer tous les dons") and st.button("Effacer définitivement"):
