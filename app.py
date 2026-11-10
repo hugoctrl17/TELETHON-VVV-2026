@@ -20,8 +20,8 @@ DB_PATH = APP_DIR / "telethon.db"
 DEFAULT_GOAL = 500
 DEFAULT_DON_URL = "https://vieuxvolantsvimeu.s2.yapla.com/fr/event-133120/"
 
-st.set_page_config(page_title="1 € = 1 kilomètre | Les Vieux Volants du Vimeu",
-                   page_icon="🚐", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Téléthon | Les Vieux Volants du Vimeu",
+                   page_icon="https://bretteville50110.fr/wp-content/uploads/2024/11/logo-telethon.jpg", layout="wide", initial_sidebar_state="collapsed")
 
 # Palette reprise du logo AFM-Téléthon et de la camionnette
 BROWN = "#3D3633"    # texte « AFM TÉLÉTHON »
