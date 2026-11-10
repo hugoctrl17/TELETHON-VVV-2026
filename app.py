@@ -343,6 +343,47 @@ def admin_panel():
     st.divider()
     st.metric("Total collecté", f"{fmt(total_km())} €")
 
+    st.divider()
+    with st.expander("⚠️ Remise à zéro du site"):
+        st.warning(
+            "Cette opération supprimera définitivement tous les dons enregistrés "
+            "(montants, noms, modes de paiement et historique) et remettra les "
+            "compteurs ainsi que la progression de la carte à zéro. "
+            "L'objectif et les paramètres du site seront conservés."
+        )
+
+        if not st.session_state.get("confirm_site_reset", False):
+            if st.button(
+                "Réinitialiser tous les compteurs à 0",
+                key="start_site_reset",
+                use_container_width=True,
+                type="primary"
+            ):
+                st.session_state.confirm_site_reset = True
+                st.rerun()
+        else:
+            st.error("Confirmez-vous la suppression définitive de tous les dons ?")
+            if st.button(
+                "Oui, supprimer tous les dons et remettre à zéro",
+                key="confirm_site_reset_button",
+                use_container_width=True,
+                type="primary"
+            ):
+                db.execute("DELETE FROM donations")
+                db.execute("DELETE FROM sqlite_sequence WHERE name = 'donations'")
+                db.commit()
+                st.session_state.confirm_site_reset = False
+                st.success("Le site a été remis à zéro. Tous les compteurs sont à 0.")
+                st.rerun()
+
+            if st.button(
+                "Annuler",
+                key="cancel_site_reset",
+                use_container_width=True
+            ):
+                st.session_state.confirm_site_reset = False
+                st.rerun()
+
 st.markdown(HERO, unsafe_allow_html=True)
 st.markdown('<div class="rays"></div>', unsafe_allow_html=True)
 
