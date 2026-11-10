@@ -57,7 +57,14 @@ html, body, .stApp, .stApp * {{ font-family:'Poppins',Arial,sans-serif; }}
   color:{YELLOW}; letter-spacing:.5px; }}
 .hero p {{ margin:.25rem 0 0; color:#fff; font-size:1.05rem; font-weight:500; }}
 .hero .logo {{ background:#fff; border-radius:14px; padding:.35rem .7rem; display:flex; align-items:center; }}
-.hero .logo img {{ height:78px; width:auto; display:block; }}
+.hero .logo img {{ height:64px; width:auto; display:block; }}
+[data-testid="stPopover"] button {{ background:{YELLOW}; color:{BROWN}; font-weight:800; border:0;
+  border-radius:12px; min-height:3.2rem; box-shadow:0 4px 0 rgba(0,0,0,.18); }}
+[data-testid="stPopover"] button:hover {{ background:{ORANGE}; color:#fff; }}
+.footer {{ background:{BROWN}; color:#fff; text-align:center; border-radius:12px; border-top:4px solid {YELLOW};
+  padding:.55rem 1rem; font-size:clamp(.7rem,1.1vw,.95rem); font-weight:500; white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis; }}
+.footer b {{ color:{YELLOW}; }}
 
 .metric {{ color:#fff; border-radius:16px; padding:.9rem 1.3rem; margin-bottom:.8rem;
   box-shadow:0 4px 0 rgba(0,0,0,.18); }}
@@ -193,17 +200,57 @@ const t0=performance.now(), dur=p1===p0?1:2500;
 
 # ---------- En-tête : logos + titre ----------
 asso, tele = img64("logo_asso.png"), img64("logo_telethon.png")
-st.markdown(f"""
+HERO = f"""
 <div class="hero">
   <div class="logo"><img src="data:image/png;base64,{asso}" alt="Les Vieux Volants du Vimeu"></div>
   <div class="titre"><h1>1 € = 1 KILOMÈTRE</h1>
     <p>Le grand voyage solidaire du Téléthon — Les Vieux Volants du Vimeu</p></div>
   <div class="logo"><img src="data:image/png;base64,{tele}" alt="AFM-Téléthon"></div>
-</div>
-<div class="rays"></div>""", unsafe_allow_html=True)
+</div>"""
+
+# ---------- Espace bénévoles (menu déroulant dans l'en-tête, visible avec ?mode=admin) ----------
+@st.fragment  # les boutons n'actualisent que ce menu : il reste ouvert entre deux dons
+def admin_panel():
+    if not admin_password:
+        st.error("Mot de passe non configuré : ajoutez ADMIN_PASSWORD dans les Secrets.")
+        return
+    if st.text_input("Mot de passe organisateur", type="password") != admin_password:
+        st.info("Saisissez le mot de passe pour ajouter un don.")
+        return
+    st.write("**Montant du don (1 € = 1 km)**")
+    cols = st.columns(5)
+    for col, v in zip(cols, (5, 10, 20, 50, 100)):
+        if col.button(f"+{v}", key=f"q{v}", use_container_width=True):
+            add_donation(v, "")
+            st.toast(f"+{v} km — total : {fmt(total_km())} km 🚐")
+    with st.form("don", clear_on_submit=True):
+        km = st.number_input("Autre montant (€)", min_value=1, max_value=100000, value=10)
+        note = st.text_input("Note facultative", placeholder="Ex. : boîte à dons, nom du donateur…")
+        if st.form_submit_button("✔ Valider le don", use_container_width=True):
+            add_donation(km, note)
+            st.toast(f"+{km} km — total : {fmt(total_km())} km 🚐")
+    st.divider()
+    if st.button("↩ Annuler le dernier don", use_container_width=True):
+        undo_last()
+        st.toast("Dernier don annulé")
+    st.download_button("💾 Sauvegarder la liste (Excel/CSV)", export_csv(),
+                       "dons_telethon.csv", "text/csv", use_container_width=True)
+    with st.expander("Zone dangereuse : tout remettre à zéro"):
+        if st.checkbox("Je veux effacer tous les dons") and st.button("Effacer définitivement"):
+            db.execute("DELETE FROM donations"); db.commit()
+            st.toast("Tous les dons ont été effacés")
+
+if mode == "admin":
+    h_left, h_right = st.columns([8, 1.7], vertical_alignment="center")
+    h_left.markdown(HERO, unsafe_allow_html=True)
+    with h_right.popover("🔒 Espace bénévoles", use_container_width=True):
+        admin_panel()
+else:
+    st.markdown(HERO, unsafe_allow_html=True)
+st.markdown('<div class="rays"></div>', unsafe_allow_html=True)
 
 # ---------- Affichage public (se rafraîchit seul toutes les 10 s) ----------
-@st.fragment(run_every=10)
+@st.fragment(run_every=5)
 def public_view():
     total = total_km()
     prev = st.session_state.get("prev_total", 0)
@@ -240,45 +287,7 @@ def public_view():
 
 public_view()
 
-# ---------- Espace bénévoles (?mode=admin) ----------
-if mode == "admin":
-    st.write("")
-    st.markdown('<div class="panel">', unsafe_allow_html=True)
-    st.subheader("Espace bénévoles")
-    if not admin_password:
-        st.error("Mot de passe non configuré : ajoutez ADMIN_PASSWORD dans les Secrets.")
-    elif st.text_input("Mot de passe organisateur", type="password") != admin_password:
-        st.info("Saisissez le mot de passe pour ajouter un don.")
-    else:
-        st.write("**Montant du don (1 € = 1 km)**")
-        cols = st.columns(5)
-        for col, v in zip(cols, (5, 10, 20, 50, 100)):
-            if col.button(f"+{v} €", key=f"q{v}", use_container_width=True):
-                add_donation(v, "")
-                st.toast(f"{v} km ajoutés 🚐")
-                st.rerun()
-        with st.form("don", clear_on_submit=True):
-            km = st.number_input("Autre montant (€)", min_value=1, max_value=100000, value=10)
-            note = st.text_input("Note facultative", placeholder="Ex. : boîte à dons, nom du donateur…")
-            if st.form_submit_button("✔ Valider le don", use_container_width=True):
-                add_donation(km, note)
-                st.toast(f"{km} km ajoutés 🚐")
-                st.rerun()
-        st.divider()
-        c1, c2 = st.columns(2)
-        if c1.button("↩ Annuler le dernier don", use_container_width=True):
-            undo_last()
-            st.rerun()
-        c2.download_button("💾 Sauvegarder la liste (Excel/CSV)", export_csv(),
-                           "dons_telethon.csv", "text/csv", use_container_width=True)
-        with st.expander("Zone dangereuse : tout remettre à zéro"):
-            if st.checkbox("Je veux effacer tous les dons") and st.button("Effacer définitivement"):
-                db.execute("DELETE FROM donations"); db.commit()
-                st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
-
 st.write("")
-st.markdown(f'<div class="rays"></div><div class="hero" style="justify-content:center;text-align:center">'
-            f'<div class="titre"><p style="font-weight:700;font-size:1.2rem">Ensemble, faisons avancer la solidarité !</p>'
-            f'<p style="font-size:.85rem">Animation des Vieux Volants du Vimeu au profit de l’AFM-Téléthon</p></div></div>',
+st.markdown('<div class="footer"><b>Ensemble, faisons avancer la solidarité !</b> &nbsp;•&nbsp; '
+            'Animation des Vieux Volants du Vimeu au profit de l’AFM-Téléthon</div>',
             unsafe_allow_html=True)
