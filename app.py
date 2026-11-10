@@ -169,11 +169,22 @@ def qr_panel():
 # ---------- Carte animée ----------
 # Coordonnées dans l'image carte_vimeu.png (705 x 470 px), nom = étape
 ROUTE = [
-    (130, 315, "Feuquières-en-Vimeu"), (140, 275, None), (175, 210, None),
-    (205, 155, "Woincourt"), (240, 125, None), (303, 118, "Friville-Escarbotin"),
-    (360, 98, None), (400, 115, None), (433, 146, "Fressenneville"),
-    (445, 185, None), (485, 205, None), (525, 236, "Tully"),
-    (545, 285, None), (563, 341, "Aigneville"),
+    (221, 312, "Feuquières-en-Vimeu"),
+    (188, 285, None),
+    (155, 251, None),
+    (128, 193, "Woincourt"),
+    (155, 170, None),
+    (207, 143, None),
+    (279, 118, "Friville-Escarbotin"),
+    (340, 111, None),
+    (405, 120, None),
+    (460, 135, "Fressenneville"),
+    (492, 165, None),
+    (527, 197, None),
+    (564, 228, "Tully"),
+    (575, 270, None),
+    (588, 318, None),
+    (594, 366, "Aigneville"),
 ]
 
 MAP_HEIGHT = 600  # hauteur de secours ; la carte s'ajuste ensuite toute seule
