@@ -1,6 +1,7 @@
 import base64
 import csv
 import io
+import html as html_lib
 import os
 import sqlite3
 from datetime import datetime
@@ -107,22 +108,40 @@ div.stButton > button:hover, div.stFormSubmitButton > button:hover {{ background
 def get_db():
     con = sqlite3.connect(DB_PATH, check_same_thread=False)
     con.execute("""CREATE TABLE IF NOT EXISTS donations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, km INTEGER NOT NULL,
-        note TEXT, created_at TEXT NOT NULL)""")
+        id INTEGER PRIMARY KEY AUTOINCREMENT, km REAL NOT NULL,
+        note TEXT, created_at TEXT NOT NULL,
+        donor_first_name TEXT, donor_last_name TEXT, payment_method TEXT)""")
+    # Migration douce pour les bases déjà créées avec l'ancienne version.
+    columns = {row[1] for row in con.execute("PRAGMA table_info(donations)").fetchall()}
+    for column, definition in (
+        ("donor_first_name", "TEXT"),
+        ("donor_last_name", "TEXT"),
+        ("payment_method", "TEXT"),
+    ):
+        if column not in columns:
+            con.execute(f"ALTER TABLE donations ADD COLUMN {column} {definition}")
     con.commit()
     return con
 
 db = get_db()
 
 def total_km():
-    return int(db.execute("SELECT COALESCE(SUM(km),0) FROM donations").fetchone()[0])
+    return float(db.execute("SELECT COALESCE(SUM(km),0) FROM donations").fetchone()[0])
 
 def recent(limit=8):
-    return db.execute("SELECT km, note, created_at FROM donations ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+    return db.execute(
+        "SELECT km, note, created_at, donor_first_name, donor_last_name "
+        "FROM donations ORDER BY id DESC LIMIT ?", (limit,)
+    ).fetchall()
 
-def add_donation(km, note):
-    db.execute("INSERT INTO donations(km,note,created_at) VALUES (?,?,?)",
-               (int(km), (note or "").strip(), datetime.now().strftime("%d/%m/%Y %H:%M")))
+def add_donation(km, first_name="", last_name="", payment_method=""):
+    db.execute(
+        """INSERT INTO donations
+           (km, note, created_at, donor_first_name, donor_last_name, payment_method)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (int(km), "", datetime.now().strftime("%d/%m/%Y %H:%M"),
+         (first_name or "").strip(), (last_name or "").strip(), payment_method)
+    )
     db.commit()
 
 def undo_last():
@@ -132,8 +151,11 @@ def undo_last():
 def export_csv():
     buf = io.StringIO()
     w = csv.writer(buf, delimiter=";")
-    w.writerow(["km", "note", "date"])
-    w.writerows(db.execute("SELECT km, note, created_at FROM donations ORDER BY id").fetchall())
+    w.writerow(["montant_euros", "prenom", "nom", "mode_paiement", "date"])
+    w.writerows(db.execute(
+        "SELECT km, donor_first_name, donor_last_name, payment_method, created_at "
+        "FROM donations ORDER BY id"
+    ).fetchall())
     return buf.getvalue().encode("utf-8-sig")
 
 # ---------- Configuration ----------
@@ -153,7 +175,10 @@ don_url = don_url or os.environ.get("DON_URL", "") or DEFAULT_DON_URL  # page de
 mode = st.query_params.get("mode", "public")
 
 def fmt(n):
-    return f"{n:,}".replace(",", " ")
+    value = float(n)
+    if value.is_integer():
+        return f"{int(value):,}".replace(",", " ")
+    return f"{value:,.2f}".replace(",", " ").replace(".", ",")
 
 @st.cache_data
 def qr_uri(url):
@@ -267,14 +292,53 @@ def admin_panel():
         return
 
     st.success("Accès autorisé")
-    st.subheader("Ajouter un don")
+    st.subheader("Enregistrer un don")
     st.caption("1 € donné = 1 km parcouru")
 
+    col1, col2 = st.columns(2)
+    with col1:
+        first_name = st.text_input("Prénom du donateur", key="donor_first_name")
+    with col2:
+        last_name = st.text_input("Nom du donateur", key="donor_last_name")
+    payment_method = st.selectbox(
+        "Mode de paiement",
+        ("Espèces", "Chèque", "Carte bancaire", "Virement", "Autre"),
+        key="donor_payment_method"
+    )
+
+    st.markdown("**Montants rapides**")
     cols = st.columns(5)
     for col, value in zip(cols, (2, 5, 10, 20, 50)):
         if col.button(f"+{value} €", key=f"don_{value}", use_container_width=True):
-            add_donation(value, "")
-            st.toast(f"+{value} km — total : {fmt(total_km())} km")
+            if not first_name.strip() or not last_name.strip():
+                st.error("Merci de saisir le nom et le prénom du donateur avant d'enregistrer le don.")
+            else:
+                add_donation(value, first_name, last_name, payment_method)
+                st.success(f"Don de {value} € enregistré pour {first_name.strip()} {last_name.strip()}.")
+                st.rerun()
+
+    st.divider()
+    st.markdown("**Autre montant**")
+    with st.form("custom_donation_form"):
+        custom_amount = st.number_input("Montant du don (€)", min_value=0.01, step=1.0, value=1.0)
+        submitted = st.form_submit_button("Enregistrer ce don", use_container_width=True)
+    if submitted:
+        if not first_name.strip() or not last_name.strip():
+            st.error("Merci de saisir le nom et le prénom du donateur avant d'enregistrer le don.")
+        else:
+            amount = round(custom_amount, 2)
+            # La colonne historique est entière : les dons sont enregistrés au centime près
+            # dans la colonne km en REAL lors de la migration ci-dessous.
+            db.execute(
+                """INSERT INTO donations
+                   (km, note, created_at, donor_first_name, donor_last_name, payment_method)
+                   VALUES (?, '', ?, ?, ?, ?)""",
+                (amount, datetime.now().strftime("%d/%m/%Y %H:%M"),
+                 first_name.strip(), last_name.strip(), payment_method)
+            )
+            db.commit()
+            st.success(f"Don de {fmt(amount)} € enregistré.")
+            st.rerun()
 
     st.divider()
     st.metric("Total collecté", f"{fmt(total_km())} €")
@@ -312,9 +376,11 @@ def public_view():
         rows = recent(5)
         html = '<div class="panel"><h3>Les derniers kilomètres solidaires</h3>'
         if rows:
-            for km, note, when in rows:
-                html += (f'<div class="don"><div><b>+{km} km</b>'
-                         + (f" — {note}" if note else "") + f'</div><span>{when}</span></div>')
+            for km, note, when, first_name, last_name in rows:
+                donor = " ".join(part for part in (first_name, last_name) if part).strip()
+                label = html_lib.escape(donor or note or "")
+                html += (f'<div class="don"><div><b>+{fmt(km)} km</b>'
+                         + (f" — {label}" if label else "") + f'</div><span>{when}</span></div>')
         else:
             html += "<div>Les premiers kilomètres n'attendent que vous !</div>"
         st.markdown(html + "</div>", unsafe_allow_html=True)
