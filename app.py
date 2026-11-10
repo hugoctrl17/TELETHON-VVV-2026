@@ -101,6 +101,31 @@ div.stButton > button:hover, div.stFormSubmitButton > button:hover {{ background
 .stProgress > div > div {{ background:#EFE6CF; height:16px; border-radius:10px; }}
 .stProgress > div > div > div > div {{ background:linear-gradient(90deg,{TEAL},{GREEN},{YELLOW},{ORANGE},{MAGENTA});
   border-radius:10px; }}
+
+
+/* Adaptation téléphone */
+@media (max-width: 640px) {{
+  .block-container {{ padding: .65rem .75rem 1.5rem !important; }}
+  .hero {{ flex-wrap: wrap; justify-content: center; gap: .55rem; padding: .7rem .6rem; }}
+  .hero .logo {{ padding: .25rem .4rem; }}
+  .hero .logo img {{ height: 38px; }}
+  .hero .titre {{ order: 3; flex: 0 0 100%; }}
+  .hero h1 {{ font-size: 1.55rem; }}
+  .hero p {{ font-size: .82rem; }}
+  h1 {{ font-size: 1.55rem !important; }}
+  h2 {{ font-size: 1.3rem !important; }}
+  h3 {{ font-size: 1.1rem !important; }}
+  div.stButton > button, div.stFormSubmitButton > button {{
+    min-height: 3.35rem; font-size: 1rem; padding: .65rem .4rem; white-space: normal;
+  }}
+  div[data-testid="stTextInput"] input,
+  div[data-testid="stNumberInput"] input,
+  div[data-testid="stSelectbox"] div[role="combobox"] {{ min-height: 3rem; font-size: 1rem; }}
+  [data-testid="stMetric"] {{ padding: .7rem; }}
+  [data-testid="stExpander"] {{ border-radius: 12px; }}
+  [data-testid="stAlert"] {{ padding: .75rem; }}
+}}
+
 </style>""", unsafe_allow_html=True)
 
 # ---------- Base de données ----------
@@ -295,11 +320,9 @@ def admin_panel():
     st.subheader("Enregistrer un don")
     st.caption("1 € donné = 1 km parcouru")
 
-    col1, col2 = st.columns(2)
-    with col1:
-        first_name = st.text_input("Prénom du donateur", key="donor_first_name")
-    with col2:
-        last_name = st.text_input("Nom du donateur", key="donor_last_name")
+    # Champs empilés pour rester lisibles et faciles à remplir sur téléphone.
+    first_name = st.text_input("Prénom du donateur", key="donor_first_name")
+    last_name = st.text_input("Nom du donateur", key="donor_last_name")
     payment_method = st.selectbox(
         "Mode de paiement",
         ("Espèces", "Chèque", "Carte bancaire", "Virement", "Autre"),
@@ -307,15 +330,19 @@ def admin_panel():
     )
 
     st.markdown("**Montants rapides**")
-    cols = st.columns(5)
-    for col, value in zip(cols, (2, 5, 10, 20, 50)):
-        if col.button(f"+{value} €", key=f"don_{value}", use_container_width=True):
-            if not first_name.strip() or not last_name.strip():
-                st.error("Merci de saisir le nom et le prénom du donateur avant d'enregistrer le don.")
-            else:
-                add_donation(value, first_name, last_name, payment_method)
-                st.success(f"Don de {value} € enregistré pour {first_name.strip()} {last_name.strip()}.")
-                st.rerun()
+    # Deux gros boutons par ligne : plus confortables au toucher sur mobile.
+    quick_amounts = (2, 5, 10, 20, 50)
+    for start in range(0, len(quick_amounts), 2):
+        cols = st.columns(2)
+        for col, value in zip(cols, quick_amounts[start:start + 2]):
+            with col:
+                if st.button(f"+{value} €", key=f"don_{value}", use_container_width=True):
+                    if not first_name.strip() or not last_name.strip():
+                        st.error("Merci de saisir le nom et le prénom du donateur avant d'enregistrer le don.")
+                    else:
+                        add_donation(value, first_name, last_name, payment_method)
+                        st.success(f"Don de {value} € enregistré pour {first_name.strip()} {last_name.strip()}.")
+                        st.rerun()
 
     st.divider()
     st.markdown("**Autre montant**")
