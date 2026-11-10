@@ -115,6 +115,12 @@ def build_map(prev_total, total):
     stops = [(x, y, n, cum[i] / acc) for i, (x, y, n) in enumerate(ROUTE) if n]
     d = "M" + " L".join(f"{x} {y}" for x, y, _ in ROUTE)
     stops_js = "[" + ",".join(f'{{x:{x},y:{y},f:{f:.4f}}}' for x, y, _, f in stops) + "]"
+    car_file = ASSETS / "voiture.png"
+    if car_file.exists():
+        cimg = base64.b64encode(car_file.read_bytes()).decode()
+        car_svg = f'<image href="data:image/png;base64,{cimg}" x="-28" y="-14.3" width="56" height="28.6"/>'
+    else:
+        car_svg = f'<rect x="-18" y="-6" width="36" height="14" rx="5" fill="#F2C34E" stroke="{GREEN}" stroke-width="2"/>'
     p0, p1 = min(prev_total / goal, 1), min(total / goal, 1)
     return f"""
 <style>html,body{{margin:0;overflow:hidden}}</style>
@@ -125,11 +131,8 @@ def build_map(prev_total, total):
   <path id="r" d="{d}" fill="none" stroke="{GREEN}" stroke-width="4" stroke-dasharray="2 9" stroke-linecap="round" opacity=".5"/>
   <path id="done" d="{d}" fill="none" stroke="{RUST}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
   <g id="checks"></g>
-  <g id="car"><circle r="24" fill="#FFF8E9" stroke="{RUST}" stroke-width="4"/>
-   <g transform="translate(-19 -12) scale(.9)">
-    <rect x="2" y="7" width="38" height="17" rx="5" fill="#F2C34E" stroke="{GREEN}" stroke-width="2"/>
-    <path d="M9 7 L14 -1 H30 L35 7Z" fill="#DCE8E5" stroke="{GREEN}" stroke-width="2"/>
-    <circle cx="11" cy="25" r="4.5" fill="{INK}"/><circle cx="31" cy="25" r="4.5" fill="{INK}"/></g></g>
+  <g id="car"><circle r="34" fill="#FFF8E9" stroke="{RUST}" stroke-width="4"/>
+   {car_svg}</g>
  </svg>
 </div></div>
 <script>
