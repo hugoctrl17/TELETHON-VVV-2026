@@ -209,7 +209,7 @@ def build_map(prev_total, total):
   </g>
  </svg>
 </div>
-<div class="cap">🚐 {fmt(total)} km parcourus sur {fmt(goal)} km</div>
+<div class="cap"> {fmt(total)} km parcourus sur {fmt(goal)} km</div>
 <script>
 const path=document.getElementById('r'), done=document.getElementById('done'),
       car=document.getElementById('car'), checks=document.getElementById('checks');
