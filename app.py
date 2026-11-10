@@ -18,6 +18,7 @@ APP_DIR = Path(__file__).parent
 ASSETS = APP_DIR / "assets"
 DB_PATH = APP_DIR / "telethon.db"
 DEFAULT_GOAL = 500
+DEFAULT_DON_URL = "https://vieuxvolantsvimeu.s2.yapla.com/fr/event-133120/"
 
 st.set_page_config(page_title="1 € = 1 kilomètre | Les Vieux Volants du Vimeu",
                    page_icon="🚐", layout="wide", initial_sidebar_state="collapsed")
@@ -50,6 +51,8 @@ html, body, .stApp, .stApp * {{ font-family:'Poppins',Arial,sans-serif; }}
 .block-container {{ max-width:1850px; padding:1rem 1.5rem 2rem; }}
 #MainMenu, footer, header {{ visibility:hidden; }}
 
+span[data-testid="stIconMaterial"], [class*="material-symbols"] {{
+  font-family:"Material Symbols Rounded" !important; }}
 .rays {{ height:8px; border-radius:6px; margin:.5rem 0 1rem;
   background:linear-gradient(90deg,{DKTEAL} 0 16%,{TEAL} 16% 33%,{GREEN} 33% 50%,
   {YELLOW} 50% 66%,{ORANGE} 66% 83%,{MAGENTA} 83% 100%); }}
@@ -146,7 +149,7 @@ try:
     don_url = st.secrets.get("DON_URL", "")
 except Exception:
     don_url = ""
-don_url = don_url or os.environ.get("DON_URL", "")  # lien de la page de don Yapla
+don_url = don_url or os.environ.get("DON_URL", "") or DEFAULT_DON_URL  # page de don Yapla
 mode = st.query_params.get("mode", "public")
 
 def fmt(n):
@@ -173,7 +176,7 @@ ROUTE = [
     (545, 285, None), (563, 341, "Aigneville"),
 ]
 
-MAP_HEIGHT = 800  # hauteur de la carte à l'écran (pixels)
+MAP_HEIGHT = 600  # hauteur de secours ; la carte s'ajuste ensuite toute seule
 
 def build_map(prev_total, total):
     img = img64("carte_vimeu.png")
@@ -222,6 +225,11 @@ function draw(p){{const pt=path.getPointAtLength(L*p);
 const t0=performance.now(), dur=p1===p0?1:2500;
 (function step(t){{const k=Math.min((t-t0)/dur,1), e=1-Math.pow(1-k,3);
   draw(p0+(p1-p0)*e); if(k<1) requestAnimationFrame(step);}})(t0);
+function fit(){{try{{const h=document.body.offsetHeight+12, f=window.frameElement;
+  if(f){{f.style.height=h+'px'; f.setAttribute('height',h);}}}}catch(e){{}}}}
+window.addEventListener('load',fit); window.addEventListener('resize',fit);
+if(window.ResizeObserver) new ResizeObserver(fit).observe(document.body);
+fit();
 </script>"""
 
 # ---------- En-tête : logos + titre ----------
