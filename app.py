@@ -9,6 +9,11 @@ from pathlib import Path
 import streamlit as st
 import streamlit.components.v1 as components
 
+try:
+    import segno  # génération du QR code
+except ImportError:
+    segno = None
+
 APP_DIR = Path(__file__).parent
 ASSETS = APP_DIR / "assets"
 DB_PATH = APP_DIR / "telethon.db"
@@ -61,6 +66,11 @@ html, body, .stApp, .stApp * {{ font-family:'Poppins',Arial,sans-serif; }}
 [data-testid="stPopover"] button {{ background:{YELLOW}; color:{BROWN}; font-weight:800; border:0;
   border-radius:12px; min-height:3.2rem; box-shadow:0 4px 0 rgba(0,0,0,.18); }}
 [data-testid="stPopover"] button:hover {{ background:{ORANGE}; color:#fff; }}
+.qr {{ display:flex; align-items:center; gap:1rem; background:#fff; border:3px solid {MAGENTA};
+  border-radius:16px; padding:.7rem 1rem; margin:.9rem 0; }}
+.qr img {{ width:130px; height:130px; flex:none; }}
+.qr b {{ color:{MAGENTA}; font-size:1.15rem; }}
+.qr span {{ color:{DKTEAL}; font-weight:700; }}
 .footer {{ background:{BROWN}; color:#fff; text-align:center; border-radius:12px; border-top:4px solid {YELLOW};
   padding:.55rem 1rem; font-size:clamp(.7rem,1.1vw,.95rem); font-weight:500; white-space:nowrap;
   overflow:hidden; text-overflow:ellipsis; }}
@@ -132,10 +142,26 @@ try:
     admin_password = st.secrets["ADMIN_PASSWORD"]
 except Exception:
     admin_password = os.environ.get("ADMIN_PASSWORD", "")
+try:
+    don_url = st.secrets.get("DON_URL", "")
+except Exception:
+    don_url = ""
+don_url = don_url or os.environ.get("DON_URL", "")  # lien de la page de don Yapla
 mode = st.query_params.get("mode", "public")
 
 def fmt(n):
     return f"{n:,}".replace(",", " ")
+
+@st.cache_data
+def qr_uri(url):
+    return segno.make(url, error="m").svg_data_uri(scale=8, border=1, dark=BROWN, light="#FFFFFF")
+
+def qr_panel():
+    if not (don_url and segno):
+        return ""
+    return (f'<div class="qr"><img src="{qr_uri(don_url)}" alt="QR code de don">'
+            '<div><b>Donnez par carte bancaire</b><br>Scannez ce QR code avec votre téléphone'
+            '<br><span>1 € donné = 1 km parcouru</span></div></div>')
 
 # ---------- Carte animée ----------
 # Coordonnées dans l'image carte_vimeu.png (705 x 470 px), nom = étape
@@ -275,7 +301,8 @@ def public_view():
         if total >= goal:
             st.balloons()
 
-        rows = recent()
+        st.markdown(qr_panel(), unsafe_allow_html=True)
+        rows = recent(5)
         html = '<div class="panel"><h3>Les derniers kilomètres solidaires</h3>'
         if rows:
             for km, note, when in rows:
