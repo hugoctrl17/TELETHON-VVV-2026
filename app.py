@@ -253,47 +253,33 @@ HERO = f"""
   <div class="logo"><img src="data:image/png;base64,{tele}" alt="AFM-Téléthon"></div>
 </div>"""
 
-# ---------- Espace bénévoles (menu déroulant dans l'en-tête, visible avec ?mode=admin) ----------
-@st.fragment  # les boutons n'actualisent que ce menu : il reste ouvert entre deux dons
+# ---------- Mode administrateur : boutons de dons uniquement ----------
 def admin_panel():
+    st.title("🔒 Espace bénévoles")
+
     if not admin_password:
         st.error("Mot de passe non configuré : ajoutez ADMIN_PASSWORD dans les Secrets.")
         return
-    if st.text_input("Mot de passe organisateur", type="password") != admin_password:
-        st.info("Saisissez le mot de passe pour ajouter un don.")
+
+    password = st.text_input("Mot de passe organisateur", type="password", key="admin_password_input")
+    if password != admin_password:
+        st.info("Saisissez le mot de passe pour accéder aux boutons de dons.")
         return
-    st.write("**Montant du don (1 € = 1 km)**")
+
+    st.success("Accès autorisé")
+    st.subheader("Ajouter un don")
+    st.caption("1 € donné = 1 km parcouru")
+
     cols = st.columns(5)
-    for col, v in zip(cols, (2, 5, 10, 20, 50)):
-        if col.button(f"+{v}", key=f"q{v}", use_container_width=True):
-            add_donation(v, "")
-            st.toast(f"+{v} km — total : {fmt(total_km())} km")
-    with st.form("don", clear_on_submit=True):
-        km = st.number_input("Autre montant (€)", min_value=1, max_value=100000, value=10)
-        note = st.text_input("MODE - Nom - Prénom", placeholder="Ex. : ESP DUPONT Jean")
-        if st.form_submit_button("✔ Valider le don", use_container_width=True):
-            add_donation(km, note)
-            st.toast(f"+{km} km — total : {fmt(total_km())} km ")
+    for col, value in zip(cols, (2, 5, 10, 20, 50)):
+        if col.button(f"+{value} €", key=f"don_{value}", use_container_width=True):
+            add_donation(value, "")
+            st.toast(f"+{value} km — total : {fmt(total_km())} km")
+
     st.divider()
-    if st.button("↩ Annuler le dernier don", use_container_width=True):
-        undo_last()
-        st.toast("Dernier don annulé")
-    st.download_button("Sauvegarder la liste (Excel/CSV)", export_csv(),
-                       "dons_telethon.csv", "text/csv", use_container_width=True)
-    with st.expander("Zone dangereuse : tout remettre à zéro"):
-        if st.checkbox("Je veux effacer tous les dons") and st.button("Effacer définitivement"):
-            db.execute("DELETE FROM donations"); db.commit()
-            st.toast("Tous les dons ont été effacés")
+    st.metric("Total collecté", f"{fmt(total_km())} €")
 
-# ---------- En-tête avec accès administrateur toujours visible ----------
-h_left, h_right = st.columns([8, 1.7], vertical_alignment="center")
-
-h_left.markdown(HERO, unsafe_allow_html=True)
-
-with h_right:
-    with st.popover("🔒 Espace bénévoles", use_container_width=True):
-        admin_panel()
-
+st.markdown(HERO, unsafe_allow_html=True)
 st.markdown('<div class="rays"></div>', unsafe_allow_html=True)
 
 # ---------- Affichage public (se rafraîchit seul toutes les 10 s) ----------
@@ -333,9 +319,15 @@ def public_view():
             html += "<div>Les premiers kilomètres n'attendent que vous !</div>"
         st.markdown(html + "</div>", unsafe_allow_html=True)
 
-public_view()
+# ---------- Affichage selon le mode choisi ----------
+if mode == "admin":
+    # Mode administrateur : boutons de dons uniquement, sans la carte.
+    admin_panel()
+else:
+    # Mode public : carte animée, compteurs et derniers dons.
+    public_view()
 
-st.write("")
-st.markdown('<div class="footer"><b>Ensemble, faisons avancer la solidarité !</b> &nbsp;•&nbsp; '
-            'Animation des Vieux Volants du Vimeu au profit de l’AFM-Téléthon</div>',
-            unsafe_allow_html=True)
+    st.write("")
+    st.markdown('<div class="footer"><b>Ensemble, faisons avancer la solidarité !</b> &nbsp;•&nbsp; '
+                'Animation des Vieux Volants du Vimeu au profit de l’AFM-Téléthon</div>',
+                unsafe_allow_html=True)
