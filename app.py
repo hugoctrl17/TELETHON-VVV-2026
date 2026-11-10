@@ -285,13 +285,15 @@ def admin_panel():
             db.execute("DELETE FROM donations"); db.commit()
             st.toast("Tous les dons ont été effacés")
 
-if mode == "admin":
-    h_left, h_right = st.columns([8, 1.7], vertical_alignment="center")
-    h_left.markdown(HERO, unsafe_allow_html=True)
-    with h_right.popover("🔒 Espace bénévoles", use_container_width=True):
+# ---------- En-tête avec accès administrateur toujours visible ----------
+h_left, h_right = st.columns([8, 1.7], vertical_alignment="center")
+
+h_left.markdown(HERO, unsafe_allow_html=True)
+
+with h_right:
+    with st.popover("🔒 Espace bénévoles", use_container_width=True):
         admin_panel()
-else:
-    st.markdown(HERO, unsafe_allow_html=True)
+
 st.markdown('<div class="rays"></div>', unsafe_allow_html=True)
 
 # ---------- Affichage public (se rafraîchit seul toutes les 10 s) ----------
