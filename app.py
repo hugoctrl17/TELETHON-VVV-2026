@@ -14,7 +14,7 @@ ASSETS = APP_DIR / "assets"
 DB_PATH = APP_DIR / "telethon.db"
 DEFAULT_GOAL = 500
 
-st.set_page_config(page_title="1 € = 1 kilomètre | Les Vieux Volants du Vimeu",
+st.set_page_config(page_title="Télethon | Les Vieux Volants du Vimeu",
                    page_icon="🚐", layout="wide", initial_sidebar_state="collapsed")
 
 PAPER, GREEN, RUST, INK, GOLD = "#F3EAD8", "#203B32", "#A94F3D", "#292B25", "#D8AE62"
